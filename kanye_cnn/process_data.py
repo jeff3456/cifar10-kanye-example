@@ -1,5 +1,7 @@
 import os
 import tensorflow as tf
+from PIL import Image
+import numpy as np
 # Preprocess files in both kanye pics and non kanye pics;
 
 pathtodata = (os.path.dirname(os.path.realpath(__file__))+
@@ -23,8 +25,6 @@ def _int64_feature(value):
 
 def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
-
-
 
 def get_kanye_f_names():
     i = 1
@@ -54,53 +54,62 @@ def get_not_kanye_f_names():
         i += 1
     return fnames
 
+def convert_to(filename_queue):
+    tf_filename_queue = tf.train.string_input_producer(filename_queue[:1]) #  list of files to read
+
+    reader = tf.WholeFileReader()
+    key, value = reader.read(tf_filename_queue)
+
+    my_img = tf.image.decode_jpeg(value) # use png or jpg decoder based on your files.
+
+    init_op = tf.initialize_all_variables()
+    sess = tf.Session()
+    sess.run(init_op)
+
+    # Start populating the filename queue.
+    with sess.as_default():
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(coord=coord)
+
+        for i in range(1): #length of your filename list
+            image = my_img.eval() #here is your image Tensor :)
+
+    print(image.shape)
+    Image.fromarray(np.asarray(image)).show()
+    coord.request_stop()
+    coord.join(threads)
 
 
+    # images = data_set.images
+    # labels = data_set.labels
+    # num_examples = data_set.num_examples
+
+    # if images.shape[0] != num_examples:
+    #     raise ValueError('Images size %d does not match label size %d.' %
+    #                     (images.shape[0], num_examples))
+
+    # rows = images.shape[1]
+    # cols = images.shape[2]
+    # depth = images.shape[3]
+    # filename = os.path.join(FLAGS.directory, name + '.tfrecords')
+    # print('Writing', filename)
+    # writer = tf.python_io.TFRecordWriter(filename)
+    # for index in range(num_examples):
+    #     image_raw = images[index].tostring()
+    #     example = tf.train.Example(features=tf.train.Features(feature={
+    #         'height': _int64_feature(rows),
+    #         'width': _int64_feature(cols),
+    #         'depth': _int64_feature(depth),
+    #         'label': _int64_feature(int(labels[index])),
+    #         'image_raw': _bytes_feature(image_raw)}))
+    #     writer.write(example.SerializeToString())
+    # writer.close()
 
 
+if __name__=="__main__":
+    # get file names
 
-"""Another approach is to convert whatever data you have into a supported format.
-This approach makes it easier to mix and match data sets and network architectures.
-The recommended format for TensorFlow is a TFRecords file containing tf.train.Example
-protocol buffers (which contain Features as a field). You write a little
-program that gets your data, stuffs it in an Example protocol buffer,
-serializes the protocol buffer to a string,
-and then writes the string to a TFRecords file
-using the tf.python_io.TFRecordWriter class.
-For example,
-tensorflow/examples/how_tos/reading_data/convert_to_records.py
-converts MNIST data to this format."""
+    filename_queue = get_kanye_f_names()
+    print('Length of filename queue: ', len(filename_queue))
 
-def read_kanye_pics(filename_queue, label):
-    """reads and parses examples from kanye images."""
-
-    class KanyeRecord():
-        pass
-
-def convert_to(data_set, name):
-    images = data_set.images
-    labels = data_set.labels
-    num_examples = data_set.num_examples
-
-    if images.shape[0] != num_examples:
-        raise ValueError('Images size %d does not match label size %d.' %
-                        (images.shape[0], num_examples))
-    rows = images.shape[1]
-    cols = images.shape[2]
-    depth = images.shape[3]
-    filename = os.path.join(FLAGS.directory, name + '.tfrecords')
-    print('Writing', filename)
-    writer = tf.python_io.TFRecordWriter(filename)
-    for index in range(num_examples):
-        image_raw = images[index].tostring()
-        example = tf.train.Example(features=tf.train.Features(feature={
-            'height': _int64_feature(rows),
-            'width': _int64_feature(cols),
-            'depth': _int64_feature(depth),
-            'label': _int64_feature(int(labels[index])),
-            'image_raw': _bytes_feature(image_raw)}))
-        writer.write(example.SerializeToString())
-    writer.close()
-
-
-
+    convert_to(filename_queue)
